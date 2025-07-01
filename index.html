@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Attend - Attendance Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Smart Attend</h1>
+            <p>Attendance Monitoring & Analytics Dashboard</p>
+        </div>
+
+        <div class="dashboard">
+            <!-- Statistics Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3 id="totalStudents">0</h3>
+                    <p>Total Records</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="presentStudents">0</h3>
+                    <p>Present</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="absentStudents">0</h3>
+                    <p>Absent</p>
+                </div>
+            </div>
+
+            <!-- Filters and Actions -->
+            <div class="filters">
+                <div class="filter-group">
+                    <label for="subjectFilter">Subject</label>
+                    <select id="subjectFilter">
+                        <option value="all">All Subjects</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="dateFilter">Date</label>
+                    <select id="dateFilter">
+                        <option value="">All Dates</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="rollSearch">Roll Number</label>
+                    <input type="text" id="rollSearch" placeholder="Search by roll number">
+                </div>
+                <div class="filter-group">
+                    <button class="action-btn export-btn" onclick="exportData()">
+                        <span>📊</span>
+                        Export Data
+                    </button>
+                </div>
+                <div class="filter-group">
+                    <button class="action-btn refresh-btn" onclick="refreshData()">
+                        <span>🔄</span>
+                        Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- Attendance Table -->
+            <div class="attendance-table">
+                <div class="table-header">
+                    <h2>
+                        <span>📋</span>
+                        Attendance Records
+                    </h2>
+                </div>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Roll Number</th>
+                                <th>Subject</th>
+                                <th>Group</th>
+                                <th>Status</th>
+                                <th>Type</th>
+                                <th>Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendanceTableBody">
+                            <tr>
+                                <td colspan="7" style="text-align: center; padding: 40px;">
+                                    <div style="color: #6b7280; font-weight: 500;">
+                                        Initializing dashboard...
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK via CDN -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="firebase.js"></script>
+</body>
+</html>
