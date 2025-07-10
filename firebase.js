@@ -157,7 +157,7 @@ async function fetchAttendanceData() {
         console.log("Fetching data from Firestore...");
         
         // Query the attendance_2025_06 collection
-        const snapshot = await db.collection("attendance_2025_06").get();
+        const snapshot = await db.collection("attendance_2025_07").get();
         
         attendanceData = [];
         
