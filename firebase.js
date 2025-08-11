@@ -1,5 +1,15 @@
 
-  const firebaseConfig = {
+let attendanceData = [];
+let subjects = [];
+let filteredSubjectAttendance = [];
+let filteredRollAttendance = [];
+
+// Global cache to store all data for the session
+let allAttendanceData = [];
+let allSubjectsData = [];
+let dataLoaded = false;
+
+ const firebaseConfig = {
     apiKey: "AIzaSyBhWiYMdf4eTCxuEtcJ2p62dXe188SS_8o",
     authDomain: "smart-attendance-1885b.firebaseapp.com",
     projectId: "smart-attendance-1885b",
@@ -8,545 +18,664 @@
     appId: "1:185742749256:web:ffb53a86d1387ce0faf27d",
     measurementId: "G-L42FQ00Y5J"
   };
-
-
-// Sample data that matches your Firebase structure
-const sampleAttendanceData = [
-    {
-        id: "0Nnr7bkXY98sz8Fa0ymw",
-        date: "2025-06-25",
-        deviceRoom: "",
-        group: "2014",
-        isExtra: false,
-        present: true,
-        rollNumber: "102497021",
-        subject: "DSA",
-        timestamp: "June 25, 2025 at 1:13:01 AM UTC+5:30",
-        type: "lect"
-    },
-    {
-        id: "0r45bAbUtV2p6DZzWMDA",
-        date: "2025-06-25",
-        deviceRoom: "",
-        group: "2014",
-        isExtra: false,
-        present: false,
-        rollNumber: "102497022",
-        subject: "DSA",
-        timestamp: "June 25, 2025 at 1:15:01 AM UTC+5:30",
-        type: "lect"
-    },
-    {
-        id: "1FMLoFor3SHxaIbA2C4T",
-        date: "2025-06-24",
-        deviceRoom: "",
-        group: "2014",
-        isExtra: false,
-        present: true,
-        rollNumber: "102497021",
-        subject: "DBMS",
-        timestamp: "June 24, 2025 at 2:30:01 AM UTC+5:30",
-        type: "lect"
-    },
-    {
-        id: "3rKWYhLQ4bIAU3rcNRAQ",
-        date: "2025-06-24",
-        deviceRoom: "",
-        group: "2014",
-        isExtra: false,
-        present: true,
-        rollNumber: "102497023",
-        subject: "DBMS",
-        timestamp: "June 24, 2025 at 2:32:01 AM UTC+5:30",
-        type: "lect"
-    },
-    {
-        id: "4X4L0GaJkviH8sb6qRZJ",
-        date: "2025-06-23",
-        deviceRoom: "",
-        group: "2014",
-        isExtra: false,
-        present: false,
-        rollNumber: "102497024",
-        subject: "OS",
-        timestamp: "June 23, 2025 at 3:45:01 AM UTC+5:30",
-        type: "lect"
-    },
-    {
-        id: "5cPQ850BfSh5ZfhM31IJ",
-        date: "2025-06-23",
-        deviceRoom: "",
-        group: "2014",
-        isExtra: false,
-        present: true,
-        rollNumber: "102497025",
-        subject: "OS",
-        timestamp: "June 23, 2025 at 3:47:01 AM UTC+5:30",
-        type: "lect"
-    },
-    {
-        id: "6bhH9fTaLYEZ5we9BtCE",
-        date: "2025-06-22",
-        deviceRoom: "",
-        group: "2014",
-        isExtra: false,
-        present: true,
-        rollNumber: "102497026",
-        subject: "CN",
-        timestamp: "June 22, 2025 at 4:15:01 AM UTC+5:30",
-        type: "lect"
-    },
-    {
-        id: "7AnF1rHi2DQv8Vhjt5BC",
-        date: "2025-06-22",
-        deviceRoom: "",
-        group: "2014",
-        isExtra: false,
-        present: false,
-        rollNumber: "102497027",
-        subject: "CN",
-        timestamp: "June 22, 2025 at 4:17:01 AM UTC+5:30",
-        type: "lect"
-    }
-];
-
-let attendanceData = [];
-let filteredData = [];
-let subjects = [];
-let dates = [];
-let db;
-
-// Check if Firebase is loaded
-function checkFirebaseLoaded() {
-    if (typeof firebase === 'undefined') {
-        console.error('Firebase is not loaded');
-        showError('Firebase SDK failed to load. Using sample data instead.');
-        return false;
-    }
-    return true;
-}
-
 // Initialize Firebase
-function initializeFirebase() {
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// Subject icons mapping - updated with subjects from your database
+const subjectIcons = {
+    'Chemistry': '🧪',
+    'DAA': '📊',
+    'DSA': '💻',
+    'Environment': '🌱',
+    'Finance': '💰',
+    'MachineLearning': '🤖',
+    'Physics': '⚡',
+    'Probability': '📈',
+    'UES913': '📚',
+    // Legacy subjects
+    'Advanced Mathematics': '📐',
+    'Computer Science': '💻',
+    'Statistics': '📊',
+    'Calculus': '📈',
+    'Engineering Mathematics': '⚙️',
+    'Mathematics': '🧮',
+    'Data Science': '📊'
+};
+
+const subjectDescriptions = {
+    'Chemistry': 'Fundamental principles of chemistry and chemical reactions.',
+    'DAA': 'Design and Analysis of Algorithms - computational problem solving.',
+    'DSA': 'Data Structures and Algorithms - efficient data organization and processing.',
+    'Environment': 'Environmental science and sustainability studies.',
+    'Finance': 'Financial management and economic principles.',
+    'MachineLearning': 'Machine learning algorithms and artificial intelligence applications.',
+    'Physics': 'Understanding the fundamental laws that govern the physical world.',
+    'Probability': 'Statistical analysis and probability theory applications.',
+    'UES913': 'Specialized course curriculum and advanced topics.',
+    // Legacy descriptions
+    'Advanced Mathematics': 'Exploring complex mathematical concepts and their real-world applications.',
+    'Computer Science': 'Introduction to programming concepts and computational thinking.',
+    'Statistics': 'Data analysis techniques and probability theory applications.',
+    'Calculus': 'Differential and integral calculus with engineering applications.',
+    'Engineering Mathematics': 'Mathematical methods essential for solving engineering problems.',
+    'Mathematics': 'Core mathematical principles and problem-solving techniques.',
+    'Data Science': 'Data analysis, visualization, and machine learning fundamentals.'
+};
+
+// --- Main Data Fetching Function ---
+async function fetchAllAttendanceData() {
     try {
-        if (!checkFirebaseLoaded()) {
-            loadSampleData();
-            return false;
-        }
+        console.log('Fetching all data at once...');
         
-        firebase.initializeApp(firebaseConfig);
-        db = firebase.firestore();
-        console.log('Firebase initialized successfully');
-        return true;
+        // Show loading state
+        document.getElementById('subjectCardGrid').innerHTML = `
+            <div class="loading">
+                <div class="spinner"></div>
+                Loading all data...
+            </div>
+        `;
+        
+        // Fetch subjects and all attendance data in parallel
+        const [subjectsResult, attendanceResult] = await Promise.all([
+            fetchAllSubjects(),
+            fetchAllAttendanceFromAllCollections()
+        ]);
+        
+        // Store in global cache for session
+        allSubjectsData = subjectsResult;
+        allAttendanceData = attendanceResult;
+        dataLoaded = true;
+        
+        console.log(`Session cache loaded: ${allSubjectsData.length} subjects, ${allAttendanceData.length} attendance records`);
+        
+        // Process and render
+        processSessionData();
+        
     } catch (error) {
-        console.error('Firebase initialization error:', error);
-        showError('Firebase initialization failed. Using sample data instead.');
-        loadSampleData();
-        return false;
+        console.error('Error fetching all data:', error);
+        showErrorMessage(error.message);
     }
 }
 
-// Fetch data from Firestore
-async function fetchAttendanceData() {
+async function fetchAllSubjects() {
     try {
-        if (!db) {
-            throw new Error('Firebase not initialized');
-        }
+        console.log('Fetching all subjects...');
+        const subjectsSnapshot = await db.collection('subjects').get();
         
-        showLoading(true);
-        console.log("Fetching data from Firestore...");
-        
-        // Query the attendance_2025_06 collection
-        const snapshot = await db.collection("attendance_2025_07").get();
-        
-        attendanceData = [];
-        
-        snapshot.forEach((doc) => {
+        const subjectsData = subjectsSnapshot.docs.map(doc => {
+            const subjectName = doc.id;
             const data = doc.data();
-            attendanceData.push({
-                id: doc.id,
-                ...data
+            
+            // Calculate total classes from database structure
+            let totalClasses = 0;
+            let classBreakdown = { lab: 0, lect: 0, tut: 0 };
+            
+            Object.keys(data).forEach(year => {
+                if (typeof data[year] === 'object') {
+                    Object.keys(data[year]).forEach(classType => {
+                        const count = data[year][classType] || 0;
+                        totalClasses += count;
+                        if (classBreakdown.hasOwnProperty(classType)) {
+                            classBreakdown[classType] += count;
+                        }
+                    });
+                }
             });
+            
+            return {
+                id: subjectName,
+                name: subjectName,
+                icon: subjectIcons[subjectName] || '📚',
+                description: subjectDescriptions[subjectName] || `${subjectName} course curriculum and activities.`,
+                totalClasses: totalClasses,
+                classBreakdown: classBreakdown,
+                totalStudents: 0,
+                actualTotalClasses: 0,
+                actualClassBreakdown: { lab: 0, lect: 0, tut: 0 }
+            };
         });
         
-        console.log(`Fetched ${attendanceData.length} records from Firestore`);
-        
-        if (attendanceData.length === 0) {
-            showError('No attendance records found in the database.');
-            loadSampleData();
-            return;
-        }
-        
-        filteredData = [...attendanceData];
-        populateFilters();
-        renderData();
-        
-        // Update table header to show it's real data
-        const tableHeader = document.querySelector('.table-header h2');
-        tableHeader.innerHTML = `
-            <span>📋</span>
-            Attendance Records 
-            <span style="color: #10b981; font-size: 0.8rem; font-weight: 500; background: rgba(16, 185, 129, 0.1); padding: 4px 8px; border-radius: 6px; margin-left: 8px;">Live Data</span>
-        `;
+        console.log(`Loaded ${subjectsData.length} subjects from database`);
+        return subjectsData;
         
     } catch (error) {
-        console.error("Error fetching attendance data:", error);
+        console.error('Error fetching subjects:', error);
+        return [];
+    }
+}
+
+async function fetchAllAttendanceFromAllCollections() {
+    try {
+        console.log('Fetching attendance collections list...');
         
-        if (error.code === 'permission-denied') {
-            showError('Permission denied. Please check your Firestore security rules.');
-        } else if (error.code === 'unavailable') {
-            showError('Firestore service is currently unavailable. Using sample data.');
-        } else {
-            showError(`Failed to fetch attendance data: ${error.message}`);
+        // First, get the list of active attendance collections from attendance_collections
+        const collectionsSnapshot = await db.collection('attendance_collections').get();
+        
+        if (collectionsSnapshot.empty) {
+            console.log('No attendance collections found in attendance_collections');
+            return [];
         }
         
-        loadSampleData();
-    } finally {
-        showLoading(false);
+        // Extract collection names from document IDs
+        const activeCollections = collectionsSnapshot.docs.map(doc => doc.id);
+        console.log(`Found ${activeCollections.length} active collections:`, activeCollections);
+        
+        // Fetch data from all active collections in parallel
+        const attendancePromises = activeCollections.map(collectionName => 
+            db.collection(collectionName)
+              .get()
+              .then(snapshot => {
+                  if (!snapshot.empty) {
+                      console.log(`✓ Fetched ${snapshot.docs.length} records from ${collectionName}`);
+                      return snapshot.docs.map(doc => ({
+                          id: doc.id,
+                          ...doc.data(),
+                          collection: collectionName
+                      }));
+                  }
+                  console.log(`✗ No data in ${collectionName}`);
+                  return [];
+              })
+              .catch(error => {
+                  console.error(`Error fetching ${collectionName}:`, error);
+                  return [];
+              })
+        );
+        
+        // Execute all queries in parallel
+        const results = await Promise.all(attendancePromises);
+        const allAttendance = results.flat();
+        
+        console.log(`Total attendance records fetched: ${allAttendance.length}`);
+        
+        // Process and clean the data
+        return allAttendance.map(record => ({
+            id: record.id,
+            date: record.date,
+            rollNumber: record.rollNumber,
+            subject: record.subject,
+            present: record.present || false,
+            type: record.type || 'lecture',
+            group: record.group || 'N/A',
+            deviceRoom: record.deviceRoom,
+            isExtra: record.isExtra || false,
+            timestamp: record.timestamp,
+            collection: record.collection
+        }));
+        
+    } catch (error) {
+        console.error('Error fetching attendance collections list:', error);
+        return [];
     }
 }
 
-// Load sample data
-function loadSampleData() {
-    console.log('Loading sample data...');
-    attendanceData = [...sampleAttendanceData];
-    filteredData = [...attendanceData];
-    populateFilters();
-    renderData();
+function processSessionData() {
+    // Process the cached data
+    subjects = [...allSubjectsData];
+    attendanceData = [...allAttendanceData];
     
-    // Update table header to show it's sample data
-    const tableHeader = document.querySelector('.table-header h2');
-    tableHeader.innerHTML = `
-        <span>📋</span>
-        Attendance Records 
-        <span style="color: #f59e0b; font-size: 0.8rem; font-weight: 500; background: rgba(245, 158, 11, 0.1); padding: 4px 8px; border-radius: 6px; margin-left: 8px;">Sample Data</span>
-    `;
-}
-
-// Show loading state
-function showLoading(show) {
-    const tableBody = document.getElementById('attendanceTableBody');
-    if (show) {
-        tableBody.innerHTML = `
-            <tr>
-                <td colspan="7" style="text-align: center; padding: 48px;">
-                    <div style="display: inline-flex; align-items: center; gap: 12px; padding: 20px 32px; background: linear-gradient(135deg, #e0f2fe, #b3e5fc); border-radius: 16px; color: #0277bd; font-weight: 600;">
-                        <div style="width: 20px; height: 20px; border: 2px solid #0277bd; border-top: 2px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                        Loading attendance data...
-                    </div>
-                    <style>
-                        @keyframes spin {
-                            0% { transform: rotate(0deg); }
-                            100% { transform: rotate(360deg); }
-                        }
-                    </style>
-                </td>
-            </tr>
-        `;
-    }
-}
-
-// Show error message
-function showError(message) {
-    const tableBody = document.getElementById('attendanceTableBody');
-    tableBody.innerHTML = `
-        <tr>
-            <td colspan="7" style="text-align: center; padding: 48px;">
-                <div style="background: linear-gradient(135deg, #fef2f2, #fecaca); padding: 24px; border-radius: 16px; border: 1px solid rgba(239, 68, 68, 0.2); color: #991b1b; max-width: 500px; margin: 0 auto;">
-                    <div style="font-weight: bold; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                        <span>⚠️</span> Notice
-                    </div>
-                    <div style="margin-bottom: 20px; line-height: 1.6;">${message}</div>
-                    <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-                        <button onclick="retryFirebaseConnection()" style="background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; border: none; padding: 12px 20px; border-radius: 12px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;">
-                            🔄 Retry Firebase
-                        </button>
-                        <button onclick="loadSampleData()" style="background: linear-gradient(135deg, #059669, #047857); color: white; border: none; padding: 12px 20px; border-radius: 12px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;">
-                            📝 Use Sample Data
-                        </button>
-                    </div>
-                </div>
-            </td>
-        </tr>
-    `;
-}
-
-// Retry Firebase connection
-function retryFirebaseConnection() {
-    console.log('Retrying Firebase connection...');
-    if (initializeFirebase()) {
-        fetchAttendanceData();
-    }
-}
-
-// Refresh data function
-function refreshData() {
-    if (db) {
-        fetchAttendanceData();
-    } else {
-        console.log('Firebase not connected, refreshing sample data...');
-        loadSampleData();
-    }
-}
-
-// Initialize the dashboard
-async function init() {
-    console.log('Initializing Smart Attend dashboard...');
+    // Update subjects with actual attendance data
+    updateSubjectClassCounts();
     
-    // Add a small delay to ensure Firebase CDN is loaded
-    setTimeout(async () => {
-        if (initializeFirebase()) {
-            await fetchAttendanceData();
-        }
-        setupEventListeners();
-    }, 1000);
+    // Render UI
+    renderSubjectCards();
+    renderRollAttendanceList();
+    
+    console.log('Session data processed and UI updated');
 }
 
-// Populate filter dropdowns
-function populateFilters() {
-    subjects = [...new Set(attendanceData.map(record => record.subject))].filter(Boolean);
-    dates = [...new Set(attendanceData.map(record => record.date))].filter(Boolean).sort().reverse();
-
-    const subjectFilter = document.getElementById('subjectFilter');
-    const dateFilter = document.getElementById('dateFilter');
-
-    // Clear existing options (except first one)
-    subjectFilter.innerHTML = '<option value="all">All Subjects</option>';
-    dateFilter.innerHTML = '<option value="">All Dates</option>';
-
+function updateSubjectClassCounts() {
     subjects.forEach(subject => {
-        const option = document.createElement('option');
-        option.value = subject;
-        option.textContent = subject;
-        subjectFilter.appendChild(option);
-    });
-
-    dates.forEach(date => {
-        const option = document.createElement('option');
-        option.value = date;
-        option.textContent = new Date(date).toLocaleDateString();
-        dateFilter.appendChild(option);
-    });
-
-    console.log(`Populated filters: ${subjects.length} subjects, ${dates.length} dates`);
-}
-
-// Setup event listeners
-function setupEventListeners() {
-    document.getElementById('subjectFilter').addEventListener('change', filterData);
-    document.getElementById('dateFilter').addEventListener('change', filterData);
-    document.getElementById('rollSearch').addEventListener('input', filterData);
-}
-
-// Filter data based on selected filters
-function filterData() {
-    const selectedSubject = document.getElementById('subjectFilter').value;
-    const selectedDate = document.getElementById('dateFilter').value;
-    const searchRoll = document.getElementById('rollSearch').value.toLowerCase();
-
-    filteredData = attendanceData.filter(record => {
-        const subjectMatch = selectedSubject === 'all' || record.subject === selectedSubject;
-        const dateMatch = !selectedDate || record.date === selectedDate;
-        const rollMatch = !searchRoll || (record.rollNumber && record.rollNumber.toLowerCase().includes(searchRoll));
-        return subjectMatch && dateMatch && rollMatch;
-    });
-
-    renderData();
-}
-
-// Render all data
-function renderData() {
-    updateStats();
-    renderTable();
-}
-
-// Update main statistics (only 3 cards)
-function updateStats() {
-    const totalRecords = filteredData.length;
-    const presentRecords = filteredData.filter(record => record.present === true).length;
-    const absentRecords = totalRecords - presentRecords;
-
-    // Add smooth number animation
-    animateNumber('totalStudents', totalRecords);
-    animateNumber('presentStudents', presentRecords);
-    animateNumber('absentStudents', absentRecords);
-}
-
-// Animate number changes
-function animateNumber(elementId, targetValue) {
-    const element = document.getElementById(elementId);
-    const currentValue = parseInt(element.textContent) || 0;
-    const increment = targetValue > currentValue ? 1 : -1;
-    const duration = 300;
-    const steps = Math.abs(targetValue - currentValue);
-    const stepTime = steps > 0 ? duration / steps : 0;
-
-    if (steps === 0) return;
-
-    let current = currentValue;
-    const timer = setInterval(() => {
-        current += increment;
-        element.textContent = current;
+        const subjectAttendance = attendanceData.filter(record => record.subject === subject.name);
         
-        if (current === targetValue) {
-            clearInterval(timer);
+        // Count different class types from actual attendance data
+        const actualBreakdown = {
+            lab: subjectAttendance.filter(r => r.type === 'lab').length,
+            lect: subjectAttendance.filter(r => r.type === 'lect' || r.type === 'lecture').length,
+            tut: subjectAttendance.filter(r => r.type === 'tut' || r.type === 'tutorial').length
+        };
+        
+        // Count unique sessions (by date and type combination)
+        const uniqueSessions = new Set(subjectAttendance.map(r => `${r.date}_${r.type}`)).size;
+        
+        // Count unique students for this subject
+        const uniqueStudents = new Set(subjectAttendance.map(r => r.rollNumber)).size;
+        
+        // Update with actual data if available, otherwise keep database counts
+        if (subjectAttendance.length > 0) {
+            subject.actualClassBreakdown = actualBreakdown;
+            subject.actualTotalClasses = uniqueSessions;
+            subject.totalStudents = uniqueStudents;
+            subject.totalAttendanceRecords = subjectAttendance.length;
         }
-    }, stepTime);
-}
-
-// Format timestamp for display
-function formatTimestamp(timestamp) {
-    if (!timestamp) return 'N/A';
-    
-    // Handle Firestore timestamp
-    if (timestamp && timestamp.toDate && typeof timestamp.toDate === 'function') {
-        return timestamp.toDate().toLocaleString();
-    }
-    
-    // Handle string timestamp
-    if (typeof timestamp === 'string') {
-        return timestamp;
-    }
-    
-    // Handle regular Date object
-    if (timestamp instanceof Date) {
-        return timestamp.toLocaleString();
-    }
-    
-    return 'N/A';
-}
-
-// Render attendance table
-function renderTable() {
-    const tbody = document.getElementById('attendanceTableBody');
-    tbody.innerHTML = '';
-
-    if (filteredData.length === 0) {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td colspan="7" style="text-align: center; padding: 48px;">
-                <div style="color: #6b7280; font-weight: 500; display: flex; flex-direction: column; align-items: center; gap: 12px;">
-                    <div style="font-size: 3rem; opacity: 0.3;">📭</div>
-                    <div>No records found matching the selected filters</div>
-                    <button onclick="clearFilters()" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-top: 8px;">
-                        Clear Filters
-                    </button>
-                </div>
-            </td>
-        `;
-        tbody.appendChild(row);
-        return;
-    }
-
-    filteredData.forEach((record, index) => {
-        const row = document.createElement('tr');
-        
-        // Format date
-        const formattedDate = record.date ? new Date(record.date).toLocaleDateString() : 'N/A';
-        
-        // Handle missing fields gracefully
-        const rollNumber = record.rollNumber || 'N/A';
-        const subject = record.subject || 'N/A';
-        const group = record.group || 'N/A';
-        const type = record.type ? record.type.toUpperCase() : 'N/A';
-        const present = record.present === true;
-        
-        row.innerHTML = `
-            <td style="font-weight: 500;">${formattedDate}</td>
-            <td style="font-weight: 600; color: #374151;">${rollNumber}</td>
-            <td><span class="subject-badge">${subject}</span></td>
-            <td style="color: #6b7280;">${group}</td>
-            <td><span class="status-${present ? 'present' : 'absent'}">${present ? 'Present' : 'Absent'}</span></td>
-            <td style="color: #6b7280; font-weight: 500;">${type}</td>
-            <td style="color: #9ca3af; font-size: 0.875rem;">${formatTimestamp(record.timestamp)}</td>
-        `;
-        
-        // Add stagger animation
-        row.style.opacity = '0';
-        row.style.transform = 'translateY(20px)';
-        tbody.appendChild(row);
-        
-        setTimeout(() => {
-            row.style.transition = 'all 0.3s ease';
-            row.style.opacity = '1';
-            row.style.transform = 'translateY(0)';
-        }, index * 50);
     });
+    
+    console.log('Updated subjects with attendance data:', subjects.map(s => ({ 
+        name: s.name, 
+        dbClasses: s.totalClasses,
+        actualClasses: s.actualTotalClasses || 0,
+        students: s.totalStudents || 0,
+        records: s.totalAttendanceRecords || 0
+    })));
 }
 
-// Clear all filters
-function clearFilters() {
-    document.getElementById('subjectFilter').value = 'all';
-    document.getElementById('dateFilter').value = '';
-    document.getElementById('rollSearch').value = '';
-    filterData();
-}
-
-// Export data to CSV
-function exportData() {
-    if (filteredData.length === 0) {
-        // Show elegant alert
-        showCustomAlert('No data to export', 'Please apply filters to get some data first.', 'warning');
-        return;
+// --- Client-side filtering functions (no more database calls) ---
+function filterAttendanceData(filters = {}) {
+    if (!dataLoaded) {
+        console.log('Data not loaded yet');
+        return [];
     }
+    
+    let filteredData = [...allAttendanceData];
+    
+    // Apply filters
+    if (filters.subject) {
+        filteredData = filteredData.filter(r => r.subject === filters.subject);
+    }
+    
+    if (filters.rollNumber) {
+        filteredData = filteredData.filter(r => 
+            r.rollNumber && r.rollNumber.toLowerCase().includes(filters.rollNumber.toLowerCase())
+        );
+    }
+    
+    if (filters.classType) {
+        filteredData = filteredData.filter(r => 
+            r.type === filters.classType || (filters.classType === 'lect' && r.type === 'lecture')
+        );
+    }
+    
+    if (filters.startDate) {
+        filteredData = filteredData.filter(r => r.date >= filters.startDate);
+    }
+    
+    if (filters.endDate) {
+        filteredData = filteredData.filter(r => r.date <= filters.endDate);
+    }
+    
+    if (filters.present !== undefined) {
+        filteredData = filteredData.filter(r => r.present === filters.present);
+    }
+    
+    console.log(`Applied filters, ${filteredData.length} records match`);
+    return filteredData;
+}
 
-    const csv = ['Date,Roll Number,Subject,Group,Status,Type,Timestamp'];
-    filteredData.forEach(record => {
-        const date = record.date || '';
-        const rollNumber = record.rollNumber || '';
-        const subject = record.subject || '';
-        const group = record.group || '';
-        const status = record.present === true ? 'Present' : 'Absent';
-        const type = record.type || '';
-        const timestamp = formatTimestamp(record.timestamp).replace(/,/g, ';');
+// --- Tab Switching ---
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
         
-        csv.push(`${date},${rollNumber},${subject},${group},${status},${type},${timestamp}`);
+        // Handle the data-tab attribute properly
+        const tabName = btn.dataset.tab;
+        if (tabName === 'subjects') {
+            // If subject detail panel is open, close it and show subjects grid
+            const detailPanel = document.getElementById('subjectAttendancePanel');
+            const subjectsGrid = document.getElementById('subjectCardGrid');
+            
+            if (detailPanel.style.display === 'block') {
+                detailPanel.style.display = 'none';
+                subjectsGrid.style.display = 'grid';
+            }
+            
+            document.querySelector('.subjects-panel').classList.add('active');
+        } else if (tabName === 'attendance') {
+            document.querySelector('.attendance-panel').classList.add('active');
+        }
     });
+});
 
-    const blob = new Blob([csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
+// --- Subject Cards with New Design ---
+function renderSubjectCards() {
+    const grid = document.getElementById('subjectCardGrid');
     
-    if (link.download !== undefined) {
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', `smart_attend_${new Date().toISOString().split('T')[0]}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        
-        // Show success message
-        showCustomAlert('Export Successful!', `Exported ${filteredData.length} records to CSV file.`, 'success');
-    }
-}
-
-// Custom alert function
-function showCustomAlert(title, message, type = 'info') {
-    const alertDiv = document.createElement('div');
-    const bgColor = type === 'success' ? '#dcfce7' : type === 'warning' ? '#fef3c7' : '#dbeafe';
-    const textColor = type === 'success' ? '#166534' : type === 'warning' ? '#92400e' : '#1e40af';
-    const icon = type === 'success' ? '✅' : type === 'warning' ? '⚠️' : 'ℹ️';
-    
-    alertDiv.innerHTML = `
-        <div style="position: fixed; top: 20px; right: 20px; background: ${bgColor}; color: ${textColor}; padding: 16px 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-width: 400px; border: 1px solid ${textColor}20;">
-            <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; margin-bottom: 4px;">
-                <span>${icon}</span>
-                ${title}
+    if (subjects.length === 0) {
+        grid.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">📚</div>
+                <h3>No subjects found</h3>
+                <p>No subjects found in your database.</p>
             </div>
-            <div style="font-size: 0.9rem; opacity: 0.9;">${message}</div>
+        `;
+        return;
+    }
+
+    grid.innerHTML = subjects.map(subject => {
+        const classCount = subject.actualTotalClasses || subject.totalClasses || 0;
+        const studentCount = subject.totalStudents || 0;
+        
+        // Calculate progress bars (mock data for visual appeal)
+        const studentProgress = Math.min((studentCount / 10) * 100, 100); // Assuming max 10 students per subject
+        const classProgress = Math.min((classCount / 10) * 100, 100); // Assuming max 10 classes
+        
+        return `
+            <div class="subject-card" data-subject="${subject.name}" onclick="openSubjectAttendance('${subject.id}')">
+                <div class="subject-header">
+                    <div class="subject-icon">${subject.icon}</div>
+                    <div class="subject-title">${subject.name}</div>
+                </div>
+                <div class="subject-description">${subject.description}</div>
+                <div class="subject-stats">
+                    <div class="stat-row">
+                        <span class="stat-row-label">Students</span>
+                        <div class="stat-row-value">
+                            ${studentCount}
+                            <div class="stat-bar">
+                                <div class="stat-bar-fill" style="width: ${studentProgress}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-row-label">Classes</span>
+                        <div class="stat-row-value">
+                            ${classCount}
+                            <div class="stat-bar">
+                                <div class="stat-bar-fill" style="width: ${classProgress}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button class="view-details-btn">
+                    View Details →
+                </button>
+            </div>
+        `;
+    }).join('');
+    
+    // Update overall stats
+    updateDashboardStats();
+}
+
+// --- Update Dashboard Stats ---
+function updateDashboardStats() {
+    // Calculate totals from actual data
+    const totalSubjectsCount = subjects.length;
+    const totalStudentsCount = new Set(attendanceData.map(r => r.rollNumber)).size;
+    const totalClassesCount = subjects.reduce((sum, subject) => sum + (subject.actualTotalClasses || subject.totalClasses || 0), 0);
+    const presentRecords = attendanceData.filter(r => r.present).length;
+    const totalRecords = attendanceData.length;
+    const averageAttendancePercent = totalRecords > 0 ? Math.round((presentRecords / totalRecords) * 100) : 0;
+    
+    // Update DOM elements
+    document.getElementById('totalSubjects').textContent = totalSubjectsCount;
+    document.getElementById('totalStudents').textContent = totalStudentsCount;
+    document.getElementById('totalClasses').textContent = totalClassesCount;
+    document.getElementById('averageAttendance').textContent = averageAttendancePercent + '%';
+    
+    // Update semester progress (mock calculation)
+    const semesterProgress = Math.min(Math.round((totalClassesCount / 50) * 100), 100); // Assuming 50 total classes in semester
+    document.getElementById('semesterProgress').textContent = semesterProgress + '%';
+    
+    // Update progress circle
+    const progressCircle = document.querySelector('.progress-circle');
+    if (progressCircle) {
+        progressCircle.style.background = `conic-gradient(#4f46e5 0% ${semesterProgress}%, #e2e8f0 ${semesterProgress}% 100%)`;
+    }
+    
+    console.log('Dashboard stats updated:', {
+        subjects: totalSubjectsCount,
+        students: totalStudentsCount,
+        classes: totalClassesCount,
+        attendance: averageAttendancePercent + '%'
+    });
+}
+
+// --- Update Date Display ---
+function updateHeaderDate() {
+    const now = new Date();
+    const options = { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    };
+    document.getElementById('headerDate').textContent = now.toLocaleDateString('en-US', options);
+}
+
+// --- Enhanced Process Session Data ---
+function processSessionData() {
+    // Process the cached data
+    subjects = [...allSubjectsData];
+    attendanceData = [...allAttendanceData];
+    
+    // Update subjects with actual attendance data
+    updateSubjectClassCounts();
+    
+    // Update header date
+    updateHeaderDate();
+    
+    // Render UI
+    renderSubjectCards();
+    renderRollAttendanceList();
+    
+    console.log('Session data processed and UI updated');
+}
+
+// --- Subject Attendance Panel ---
+function openSubjectAttendance(subjectId) {
+    const subject = subjects.find(s => s.id === subjectId);
+    if (!subject) return;
+
+    document.getElementById('subjectCardGrid').style.display = 'none';
+    const panel = document.getElementById('subjectAttendancePanel');
+    panel.style.display = 'block';
+    
+    document.getElementById('subjectAttendanceTitle').innerHTML = `
+        <span class="subject-icon" style="background: var(--subject-color, #3b82f6);">${subject.icon}</span>
+        ${subject.name} Attendance
+    `;
+    
+    document.getElementById('subjectClassType').value = '';
+    document.getElementById('subjectStartDate').value = '';
+    document.getElementById('subjectEndDate').value = '';
+    renderSubjectAttendanceList(subject.id);
+
+    document.getElementById('subjectRefreshBtn').onclick = () => renderSubjectAttendanceList(subject.id);
+    document.getElementById('subjectExportBtn').onclick = () => exportAttendanceToExcel(filteredSubjectAttendance, subject.name);
+    document.getElementById('subjectClassType').onchange = () => renderSubjectAttendanceList(subject.id);
+    document.getElementById('subjectStartDate').onchange = () => renderSubjectAttendanceList(subject.id);
+    document.getElementById('subjectEndDate').onchange = () => renderSubjectAttendanceList(subject.id);
+    document.getElementById('backToSubjects').onclick = () => {
+        panel.style.display = 'none';
+        document.getElementById('subjectCardGrid').style.display = 'grid';
+    };
+}
+
+function renderSubjectAttendanceList(subjectId) {
+    const filters = {
+        subject: subjectId,
+        classType: document.getElementById('subjectClassType').value,
+        startDate: document.getElementById('subjectStartDate').value,
+        endDate: document.getElementById('subjectEndDate').value
+    };
+    
+    const filteredData = filterAttendanceData(filters);
+    filteredSubjectAttendance = filteredData;
+    document.getElementById('subjectAttendanceList').innerHTML = renderAttendanceTable(filteredData);
+}
+
+// --- Roll Number Search ---
+document.getElementById('rollSearchInput').addEventListener('input', renderRollAttendanceList);
+document.getElementById('rollClassType').addEventListener('change', renderRollAttendanceList);
+document.getElementById('rollStartDate').addEventListener('change', renderRollAttendanceList);
+document.getElementById('rollEndDate').addEventListener('change', renderRollAttendanceList);
+document.getElementById('rollRefreshBtn').onclick = renderRollAttendanceList;
+document.getElementById('rollExportBtn').onclick = () => exportAttendanceToExcel(filteredRollAttendance, "RollNumber");
+
+function renderRollAttendanceList() {
+    const filters = {
+        rollNumber: document.getElementById('rollSearchInput').value.trim(),
+        classType: document.getElementById('rollClassType').value,
+        startDate: document.getElementById('rollStartDate').value,
+        endDate: document.getElementById('rollEndDate').value
+    };
+    
+    const filteredData = filterAttendanceData(filters);
+    filteredRollAttendance = filteredData;
+    document.getElementById('rollAttendanceList').innerHTML = renderAttendanceTable(filteredData);
+}
+
+// --- Attendance Table ---
+function renderAttendanceTable(data) {
+    if (!data.length) {
+        return `
+            <div class="empty-state">
+                <div class="empty-state-icon">📊</div>
+                <h3>No records found</h3>
+                <p>No attendance data matches your current filters.</p>
+            </div>
+        `;
+    }
+
+    let rows = data.map(r => `
+        <tr>
+            <td>${formatDate(r.date)}</td>
+            <td>${r.rollNumber || "N/A"}</td>
+            <td>${r.subject || "N/A"}</td>
+            <td><span class="status-badge status-${r.present ? 'present' : 'absent'}">${r.present ? 'Present' : 'Absent'}</span></td>
+            <td>${(r.type||'').toUpperCase()}</td>
+            <td>${r.group || "N/A"}</td>
+            <td>${formatTimestamp(r.timestamp)}</td>
+        </tr>
+    `).join('');
+    
+    return `
+        <table class="attendance-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Roll Number</th>
+                    <th>Subject</th>
+                    <th>Status</th>
+                    <th>Type</th>
+                    <th>Group</th>
+                    <th>Timestamp</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>
+    `;
+}
+
+function formatDate(date) {
+    if (!date) return "N/A";
+    return new Date(date).toLocaleDateString();
+}
+
+function formatTimestamp(ts) {
+    if (!ts) return "N/A";
+    
+    try {
+        let date;
+        
+        // Handle Firestore Timestamp objects
+        if (ts && typeof ts === 'object' && ts.seconds) {
+            date = new Date(ts.seconds * 1000);
+        }
+        // Handle regular Date objects or date strings
+        else if (typeof ts === "string") {
+            date = new Date(ts);
+        }
+        // Handle timestamp objects with toDate method
+        else if (ts && typeof ts.toDate === 'function') {
+            date = ts.toDate();
+        }
+        // Handle numeric timestamps
+        else if (typeof ts === 'number') {
+            date = new Date(ts);
+        }
+        else {
+            return "Invalid timestamp";
+        }
+        
+        // Check if date is valid
+        if (isNaN(date.getTime())) {
+            return "Invalid date";
+        }
+        
+        // Format as readable date and time
+        return date.toLocaleString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        });
+        
+    } catch (error) {
+        console.error('Error formatting timestamp:', error);
+        return "Format error";
+    }
+}
+
+// --- Export function ---
+function exportAttendanceToExcel(data, name) {
+    if (!data || !data.length) {
+        alert("No data to export!");
+        return;
+    }
+    
+    // Prepare data for Excel
+    const worksheetData = [
+        ["Date", "Roll Number", "Subject", "Status", "Type", "Group", "Device Room", "Timestamp"]
+    ];
+    
+    data.forEach(r => {
+        worksheetData.push([
+            r.date || "",
+            r.rollNumber || "",
+            r.subject || "",
+            r.present ? "Present" : "Absent",
+            (r.type || "").toUpperCase(),
+            r.group || "",
+            r.deviceRoom || "",
+            formatTimestamp(r.timestamp)
+        ]);
+    });
+    
+    // Create workbook and worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(worksheetData);
+    
+    // Set column widths for better formatting
+    const colWidths = [
+        { wch: 12 }, // Date
+        { wch: 15 }, // Roll Number
+        { wch: 20 }, // Subject
+        { wch: 10 }, // Status
+        { wch: 8 },  // Type
+        { wch: 8 },  // Group
+        { wch: 15 }, // Device Room
+        { wch: 20 }  // Timestamp
+    ];
+    ws['!cols'] = colWidths;
+    
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(wb, ws, "Attendance Data");
+    
+    // Generate filename with current date
+    const currentDate = new Date().toISOString().split('T')[0];
+    const filename = `${name}_attendance_${currentDate}.xlsx`;
+    
+    // Write and download the file
+    XLSX.writeFile(wb, filename);
+}
+
+// --- Error handling functions ---
+function showErrorMessage(error) {
+    document.getElementById('subjectCardGrid').innerHTML = `
+        <div class="empty-state">
+            <div class="empty-state-icon">⚠️</div>
+            <h3>Error loading data</h3>
+            <p>There was an error connecting to your database: ${error}</p>
         </div>
     `;
-    
-    document.body.appendChild(alertDiv);
-    
-    setTimeout(() => {
-        alertDiv.style.transition = 'all 0.3s ease';
-        alertDiv.style.opacity = '0';
-        alertDiv.style.transform = 'translateX(100%)';
-        setTimeout(() => document.body.removeChild(alertDiv), 300);
-    }, 3000);
 }
 
-// Initialize dashboard when page loads
-document.addEventListener('DOMContentLoaded', init);
+// --- Initialization ---
+window.addEventListener('DOMContentLoaded', fetchAllAttendanceData);
