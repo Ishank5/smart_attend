@@ -3,107 +3,160 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Attend - Attendance Dashboard</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <title>Admin Dashboard - Faculty Management</title>
     <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>Smart Attend</h1>
-            <p>Attendance Monitoring & Analytics Dashboard</p>
-        </div>
+    <div class="dashboard-container">
+        <!-- Header Section -->
+        <header class="header">
+            <div class="header-content">
+                <div class="header-left">
+                    <div class="profile-avatar">
+                        👨‍🏫
+                    </div>
+                    <div class="header-text">
+                        <h1>AttendX Admin Dashboard</h1>
+                        <p>Faculty Management System</p>
+                    </div>
+                </div>
+                <div class="header-date" id="headerDate">
+                    Monday, June 10, 2024
+                </div>
+            </div>
+        </header>
 
-        <div class="dashboard">
-            <!-- Statistics Cards -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <h3 id="totalStudents">0</h3>
-                    <p>Total Records</p>
+        <!-- Welcome Section -->
+        <section class="welcome-section">
+            <div class="welcome-text">
+                <h2>Welcome Back, Professor</h2>
+                <p>Manage your academic responsibilities efficiently. Your semester is progressing well with consistent student engagement and performance tracking.</p>
+            </div>
+            <div class="welcome-progress">
+                <div class="progress-circle">
+                    <span class="progress-text" id="semesterProgress">65%</span>
                 </div>
-                <div class="stat-card">
-                    <h3 id="presentStudents">0</h3>
-                    <p>Present</p>
+                <div class="progress-label">Semester progress</div>
+            </div>
+        </section>
+
+        <!-- Stats Section -->
+        <section class="stats-section" id="statsSection">
+            <div class="stat-card">
+                <div class="stat-icon subjects">📚</div>
+                <div class="stat-number" id="totalSubjects">8</div>
+                <div class="stat-label">Total Subjects</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon students">👥</div>
+                <div class="stat-number" id="totalStudents">21</div>
+                <div class="stat-label">Total Students</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon classes">📅</div>
+                <div class="stat-number" id="totalClasses">31</div>
+                <div class="stat-label">Total Classes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon attendance">📊</div>
+                <div class="stat-number" id="averageAttendance">92%</div>
+                <div class="stat-label">Average attendance</div>
+            </div>
+        </section>
+
+        <!-- Navigation Tabs -->
+        <nav class="nav-tabs">
+            <button class="tab-btn active" data-tab="subjects">Subjects</button>
+            <button class="tab-btn" data-tab="attendance">Attendance</button>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Subjects Tab -->
+            <div class="tab-panel subjects-panel active">
+                <div class="subjects-grid" id="subjectCardGrid">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading your subjects...
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <h3 id="absentStudents">0</h3>
-                    <p>Absent</p>
+
+                <!-- Subject Detail Panel -->
+                <div class="subject-detail-panel" id="subjectAttendancePanel" style="display:none;">
+                    <div class="subject-detail-header">
+                        <div class="subject-detail-left">
+                            <button class="back-btn" id="backToSubjects">
+                                ← Back to Subjects
+                            </button>
+                            <h2 class="subject-detail-title" id="subjectAttendanceTitle">
+                                <span class="subject-icon" id="subjectDetailIcon">📚</span>
+                                Subject Details
+                            </h2>
+                        </div>
+                        <div class="detail-controls">
+                            <select id="subjectClassType" class="form-input">
+                                <option value="">All Types</option>
+                                <option value="lect">Lecture</option>
+                                <option value="lab">Lab</option>
+                                <option value="tut">Tutorial</option>
+                            </select>
+                            <input type="date" id="subjectStartDate" class="form-input">
+                            <span style="color: #64748b;">to</span>
+                            <input type="date" id="subjectEndDate" class="form-input">
+                            <button class="btn btn-secondary" id="subjectRefreshBtn">
+                                🔄 Refresh
+                            </button>
+                            <button class="btn btn-primary" id="subjectExportBtn">
+                                📊 Export Excel
+                            </button>
+                        </div>
+                    </div>
+                    <div class="subject-detail-content">
+                        <div id="subjectAttendanceList" class="attendance-table-container">
+                            <!-- Subject attendance data will be loaded here -->
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Filters and Actions -->
-            <div class="filters">
-                <div class="filter-group">
-                    <label for="subjectFilter">Subject</label>
-                    <select id="subjectFilter">
-                        <option value="all">All Subjects</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="dateFilter">Date</label>
-                    <select id="dateFilter">
-                        <option value="">All Dates</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="rollSearch">Roll Number</label>
-                    <input type="text" id="rollSearch" placeholder="Search by roll number">
-                </div>
-                <div class="filter-group">
-                    <button class="action-btn export-btn" onclick="exportData()">
-                        <span>📊</span>
-                        Export Data
-                    </button>
-                </div>
-                <div class="filter-group">
-                    <button class="action-btn refresh-btn" onclick="refreshData()">
-                        <span>🔄</span>
-                        Refresh
-                    </button>
+            <!-- Attendance Tab -->
+            <div class="tab-panel attendance-panel">
+                <div class="search-section">
+                    <div class="search-header">
+                        <h2 class="search-title">Search Student Attendance</h2>
+                        <div class="search-controls">
+                            <input type="text" id="rollSearchInput" class="form-input" placeholder="Enter roll number...">
+                            <select id="rollClassType" class="form-input">
+                                <option value="">All Types</option>
+                                <option value="lect">Lecture</option>
+                                <option value="lab">Lab</option>
+                                <option value="tut">Tutorial</option>
+                            </select>
+                            <input type="date" id="rollStartDate" class="form-input">
+                            <span style="color: #64748b;">to</span>
+                            <input type="date" id="rollEndDate" class="form-input">
+                            <button class="btn btn-secondary" id="rollRefreshBtn">
+                                🔄 Refresh
+                            </button>
+                            <button class="btn btn-primary" id="rollExportBtn">
+                                📊 Export Excel
+                            </button>
+                        </div>
+                    </div>
+                    <div id="rollAttendanceList" class="attendance-table-container">
+                        <!-- Roll attendance data will be loaded here -->
+                    </div>
                 </div>
             </div>
-
-            <!-- Attendance Table -->
-            <div class="attendance-table">
-                <div class="table-header">
-                    <h2>
-                        <span>📋</span>
-                        Attendance Records
-                    </h2>
-                </div>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Roll Number</th>
-                                <th>Subject</th>
-                                <th>Group</th>
-                                <th>Status</th>
-                                <th>Type</th>
-                                <th>Timestamp</th>
-                            </tr>
-                        </thead>
-                        <tbody id="attendanceTableBody">
-                            <tr>
-                                <td colspan="7" style="text-align: center; padding: 40px;">
-                                    <div style="color: #6b7280; font-weight: 500;">
-                                        Initializing dashboard...
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+        </main>
     </div>
 
-    <!-- Firebase SDK via CDN -->
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <!-- SheetJS for Excel export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="firebase.js"></script>
 </body>
 </html>
